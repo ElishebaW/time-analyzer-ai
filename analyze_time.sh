@@ -43,7 +43,6 @@ elif [ -f "$DOWNLOAD_DIR/${FILENAME_BASE_YESTERDAY}.pdf" ]; then
     FILE_TYPE_YESTERDAY="pdf"
 else
     echo "No Toggl Track summary report found for yesterday ($YESTERDAY) in Downloads."
-    exit 1
 fi
 
 echo "Processing files: $FILE_PATH_TODAY and $FILE_PATH_YESTERDAY"
@@ -58,8 +57,7 @@ if [[ "$FILE_TYPE_TODAY" == "pdf" ]]; then
 elif [[ "$FILE_TYPE_TODAY" == "csv" ]]; then
     TEXT_TODAY=$(cat "$FILE_PATH_TODAY")
 else
-    echo "Unsupported file type for today's file."
-    exit 1
+    echo "No Data for yesterday."
 fi
 
 if [[ "$FILE_TYPE_YESTERDAY" == "pdf" ]]; then
@@ -71,8 +69,7 @@ if [[ "$FILE_TYPE_YESTERDAY" == "pdf" ]]; then
 elif [[ "$FILE_TYPE_YESTERDAY" == "csv" ]]; then
     TEXT_YESTERDAY=$(cat "$FILE_PATH_YESTERDAY")
 else
-    echo "Unsupported file type for yesterday's file."
-    exit 1
+    echo "No Data for yesterday."
 fi
 
 # Send the extracted text to the local LLM for analysis and comparison
@@ -82,12 +79,17 @@ OUTPUT_FILE="time_analyze.md"
 echo "# $TODAY" >> "$OUTPUT_FILE"
 
 # Updated and clarified prompt
-echo "$TEXT_TODAY" | ollama run llama3.2 "You are my time coach. I will provide you with the time tracking data for today and yesterday. Your task is to:
-- Compare the time and projects for today and yesterday.
-- Identify improvements or regressions.
-- Provide a personalized score (on a scale from 0 to 100) for today's productivity relative to yesterday.
-- Suggest specific ways I can improve, focusing on breaks and walking as also productive activities.
-- Ignore the from 'PROJECT' , "Billable" "Non-billable" sections from today and yesterday, and only focus on the 'PROJECT - TIME ENTRY' sections from today and yesterday.
-- Output the analysis in markdown format." >> "$OUTPUT_FILE"
+echo "$TEXT_TODAY" | ollama run llama3.2 "You are my productivity coach. You will receive structured time tracking data for TODAY and YESTERDAY as JSON.
+
+Your task is to:
+- Compare the time and projects between TODAY and YESTERDAY.
+- ONLY use the entries listed under each specific date — never infer or carry over tasks between days.
+- Do not assume any project happened on both days unless it appears in both TODAY and YESTERDAY sections.
+- Assign a productivity score for TODAY (0–100), based on time usage, task quality, and inclusion of rest or walking breaks.
+- Suggest 2–3 improvements to my time usage. Breaks and walking are considered positive.
+- Your output should be in clean markdown.
+
+Important: Do NOT hallucinate or infer data. ONLY use the fields explicitly provided under each date.
+" >> "$OUTPUT_FILE"
 
 echo "Analysis saved to $OUTPUT_FILE"
