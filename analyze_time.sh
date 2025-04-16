@@ -88,6 +88,7 @@ Your task is to:
 - Assign a productivity score for TODAY (0–100), based on time usage, task quality, and inclusion of rest or walking breaks.
 - Suggest 2–3 improvements to my time usage. Breaks and walking are considered positive.
 - Your output should be in clean markdown.
+- Make it specific to the data provided, without any assumptions or inferences not generic. 
 
 Important: Do NOT hallucinate or infer data. ONLY use the fields explicitly provided under each date.
 " >> "$OUTPUT_FILE"

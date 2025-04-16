@@ -1,4 +1,6 @@
-import os
+import warnings
+warnings.filterwarnings("ignore")
+
 import datetime
 import subprocess
 from unstructured.partition.pdf import partition_pdf
@@ -44,7 +46,7 @@ else:
 # Extract structured data using Unstructured
 def extract_text(file_path, file_type):
     if file_type == "pdf":
-        elements = partition_pdf(filename=str(file_path))
+        elements = partition_pdf(filename=str(file_path), strategy="hi_res",extract_images_in_pdf=True)
     elif file_type == "csv":
         elements = partition_csv(filename=str(file_path))
     else:
@@ -69,10 +71,13 @@ Your task is to:
 - ONLY use the entries listed under each specific date — never infer or carry over tasks between days.
 - Do not assume any project happened on both days unless it appears in both TODAY and YESTERDAY sections.
 - Assign a productivity score for TODAY (0–100), based on time usage, task quality, and inclusion of rest or walking breaks.
-- Suggest 2–3 improvements to my time usage. Breaks and walking are considered positive.
-- Your output should be in clean markdown.
-
-Important: Do NOT hallucinate or infer data. ONLY use the fields explicitly provided under each date.
+- Suggest 2–4 improvements to my time usage. Breaks and walking are considered positive.
+- Your output should be in clean markdown
+- Focus only on the "TIME ENTRY" and "DURATION" sections of the pdf files and don't look at other sections.
+- Focus only on the "Description" and "Duration" columns of the csv files and don't look at other columns.
+- Make the output specific to the data provided, and do not include any generic advice or suggestions. 
+- Display the report with TODAY time and projects, YESTERDAY time and projects,  the productivity score, and recommendations for improvement. 
+- Important: Do NOT hallucinate or infer data. ONLY use the fields explicitly provided under each date.
 """
 
 # Call LLM using Ollama
@@ -85,3 +90,4 @@ output_text = result.stdout.decode()
 output_file = Path("time_analyze.md")
 output_file.write_text(output_text)
 print(f"✅ Analysis saved to: {output_file.resolve()}")
+
