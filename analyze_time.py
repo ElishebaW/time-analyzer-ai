@@ -1,93 +1,169 @@
-import warnings
-warnings.filterwarnings("ignore")
-
+import os
 import datetime
+import chromadb
 import subprocess
 from unstructured.partition.pdf import partition_pdf
 from unstructured.partition.csv import partition_csv
-from pathlib import Path
+from langchain.text_splitter import RecursiveCharacterTextSplitter, SentenceTransformersTokenTextSplitter
+from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
 
-# Setup dates
-today = datetime.date.today()
-yesterday = today - datetime.timedelta(days=1)
+# Initialize ChromaDB client
+chroma_client = chromadb.PersistentClient(path="./chromadb")
 
-date_fmt = "%Y-%m-%d"
-today_str = today.strftime(date_fmt)
-yesterday_str = yesterday.strftime(date_fmt)
 
-# Define file locations
-download_dir = Path.home() / "Downloads"
-file_base_today = f"Toggl_Track_summary_report_{today_str}_{today_str}"
-file_base_yesterday = f"Toggl_Track_summary_report_{yesterday_str}_{yesterday_str}"
+# Function to split text into chunks
+def split_text_into_chunks(text, chunk_size=500, chunk_overlap=50):
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap,
+        separators=["\n\n", "\n", " ", ""]
+    )
+    return text_splitter.split_text(text)
 
-# Utility to find file
-def find_file(file_base):
-    for ext in ['csv', 'pdf']:
-        path = download_dir / f"{file_base}.{ext}"
-        if path.exists():
-            return path, ext
-    return None, None
-
-# Find files
-file_today, ext_today = find_file(file_base_today)
-file_yesterday, ext_yesterday = find_file(file_base_yesterday)
-
-if not file_today:
-    print(f"❌ No file found for today ({today_str})")
-    exit(1)
-else:
-    print(f"✅ Found today's file: {file_today}")
-
-if not file_yesterday:
-    print(f"⚠️ No file found for yesterday ({yesterday_str}) — continuing with just today's data")
-else:
-    print(f"✅ Found yesterday's file: {file_yesterday}")
-
-# Extract structured data using Unstructured
-def extract_text(file_path, file_type):
-    if file_type == "pdf":
-        elements = partition_pdf(filename=str(file_path), strategy="hi_res",extract_images_in_pdf=True)
-    elif file_type == "csv":
-        elements = partition_csv(filename=str(file_path))
+# Function to process PDF or CSV files and extract text
+def process_file(file_path):
+    if file_path.endswith(".pdf"):
+        elements = partition_pdf(filename=file_path)
+    elif file_path.endswith(".csv"):
+        elements = partition_csv(filename=file_path)
     else:
-        return ""
-    return "\n".join([el.text for el in elements if el.text])
+        raise ValueError("Unsupported file format. Only PDF and CSV files are supported.")
 
-text_today = extract_text(file_today, ext_today)
-text_yesterday = extract_text(file_yesterday, ext_yesterday) if file_yesterday else ""
+    # Combine the partitioned elements into a single text
+    combined_text = "\n".join([str(element) for element in elements])
+    return combined_text
 
-# Prepare prompt for LLM
-prompt = f"""
-You are my productivity coach. You will receive structured time tracking data for TODAY and YESTERDAY as plain text.
+# Function to find today's and yesterday's files in the Downloads directory
+def find_files_in_downloads():
+    download_dir = os.path.expanduser("~/Downloads")  # Path to the Downloads directory
 
-### TODAY ({today_str})
-{text_today}
+    # Get today's and yesterday's dates
+    today = datetime.date.today()
+    yesterday = today - datetime.timedelta(days=1)
 
-### YESTERDAY ({yesterday_str})
-{text_yesterday}
+    # Expected filename patterns
+    filename_base_today = f"Toggl_Track_summary_report_{today}_{today}"
+    filename_base_yesterday = f"Toggl_Track_summary_report_{yesterday}_{yesterday}"
+
+    # Search for today's file
+    today_file = None
+    for ext in [".csv", ".pdf"]:
+        file_path = os.path.join(download_dir, f"{filename_base_today}{ext}")
+        if os.path.exists(file_path):
+            today_file = file_path
+            break
+
+    # Search for yesterday's file
+    yesterday_file = None
+    for ext in [".csv", ".pdf"]:
+        file_path = os.path.join(download_dir, f"{filename_base_yesterday}{ext}")
+        if os.path.exists(file_path):
+            yesterday_file = file_path
+            break
+
+    if not today_file:
+        raise FileNotFoundError(f"No Toggl Track summary report found for today ({today}) in Downloads.")
+    if not yesterday_file:
+        raise FileNotFoundError(f"No Toggl Track summary report found for yesterday ({yesterday}) in Downloads.")
+
+    return today_file, yesterday_file
+
+# Function to add text and embeddings to ChromaDB
+def add_to_chromadb(text, collection_name="time_analysis"):
+    # Split text into chunks
+    chunks = split_text_into_chunks(text)
+    type(chunks)
+    len(chunks)
+    print(f"chunks: {chunks[0:2]}")  # Print first two chunks for debugging
+
+    token_split_texts = split_text_into_tokens(chunks)
+
+    embedding_function = SentenceTransformerEmbeddingFunction()
+    print(embedding_function([token_split_texts[10]]))
+
+    # Create or get a ChromaDB collection
+    collection = chroma_client.get_or_create_collection(name=collection_name, embedding_function=embedding_function)
+
+    # Add chunks and embeddings to the collection
+
+    ids = [str(i) for i in range(len(token_split_texts))]
+  
+    collection.add(documents=token_split_texts,ids=ids)
+
+    print(f"Added {len(token_split_texts)} split texts to the ChromaDB collection '{collection_name}'.")
+
+def split_text_into_tokens(chunks):
+    token_splitter = SentenceTransformersTokenTextSplitter(chunk_overlap=0, tokens_per_chunk=256)
+
+    token_split_texts = []
+    for text in chunks:
+        token_split_texts += token_splitter.split_text(text)
+    return token_split_texts
+
+# Function to send text and prompt to the local LLM
+def send_to_llm(today_text, yesterday_text, output_file="time_analyze.md"):
+    # Define the prompt
+    prompt = f"""
+You are my productivity coach. You will receive structured time tracking data for TODAY and YESTERDAY as JSON.
 
 Your task is to:
 - Compare the time and projects between TODAY and YESTERDAY.
 - ONLY use the entries listed under each specific date — never infer or carry over tasks between days.
 - Do not assume any project happened on both days unless it appears in both TODAY and YESTERDAY sections.
 - Assign a productivity score for TODAY (0–100), based on time usage, task quality, and inclusion of rest or walking breaks.
-- Suggest 2–4 improvements to my time usage. Breaks and walking are considered positive.
-- Your output should be in clean markdown
-- Focus only on the "TIME ENTRY" and "DURATION" sections of the pdf files and don't look at other sections.
-- Focus only on the "Description" and "Duration" columns of the csv files and don't look at other columns.
-- Make the output specific to the data provided, and do not include any generic advice or suggestions. 
-- Display the report with TODAY time and projects, YESTERDAY time and projects,  the productivity score, and recommendations for improvement. 
-- Important: Do NOT hallucinate or infer data. ONLY use the fields explicitly provided under each date.
+- Suggest 2–3 improvements to my time usage. Breaks and walking are considered positive.
+- Your output should be in clean markdown.
+- Make it specific to the data provided, without any assumptions or inferences not generic.
+- Important: Do NOT hallucinate or infer data. ONLY use the fields explicitly provided under each date. If you're not sure, say "I'm not sure how you can improve the time.".
+
+TODAY:
+{today_text}
+
+YESTERDAY:
+{yesterday_text}
 """
 
-# Call LLM using Ollama
-print("🧠 Running analysis with local LLM...")
-ollama_command = ["ollama", "run", "llama3.2"]
-result = subprocess.run(ollama_command, input=prompt.encode(), capture_output=True)
-output_text = result.stdout.decode()
+    # Write the date to the output file
+    today = datetime.date.today()
+    with open(output_file, "w") as f:
+        f.write(f"# {today}\n")
 
-# Save result
-output_file = Path("time_analyze.md")
-output_file.write_text(output_text)
-print(f"✅ Analysis saved to: {output_file.resolve()}")
+    # Send the prompt and text to the local LLM using `ollama`
+    try:
+        result = subprocess.run(
+            ["ollama", "run", "llama3.2", prompt],
+            capture_output=True,
+            text=True
+        )
+        # Append the LLM's response to the output file
+        with open(output_file, "a") as f:
+            f.write(result.stdout)
+        print(f"Analysis saved to {output_file}")
+    except FileNotFoundError:
+        raise EnvironmentError("ollama is not installed or not in PATH. Please ensure it is installed.")
 
+
+# Main function
+if __name__ == "__main__":
+    # Find files for TODAY and YESTERDAY in the Downloads directory
+    print("Searching for files in Downloads...")
+    today_file, yesterday_file = find_files_in_downloads()
+
+    # Process today's file
+    print(f"Processing today's file: {today_file}")
+    today_text = process_file(today_file)
+
+    # Process yesterday's file
+    print(f"Processing yesterday's file: {yesterday_file}")
+    yesterday_text = process_file(yesterday_file)
+
+    # Combine today's and yesterday's text
+    combined_text = f"TODAY:\n{today_text}\n\nYESTERDAY:\n{yesterday_text}"
+
+    # Add combined text to ChromaDB
+    add_to_chromadb(combined_text, collection_name="time_analysis")
+
+      # Send the extracted text and prompt to the local LLM
+    send_to_llm(today_text, yesterday_text)
+
+    print("Analysis complete.")
