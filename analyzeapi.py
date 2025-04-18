@@ -1,7 +1,6 @@
-import os
-import datetime
 import chromadb
 import subprocess
+import json
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List
@@ -29,18 +28,25 @@ def rerank_documents_with_cross_encoder(query_text, documents):
     """
     Rerank documents using a Cross-Encoder.
     """
-    # Step 1: Create query-document pairs
 
-    pairs = [[query_text, doc] for doc in documents]
+    # Step 1: Ensure each document is a single string
+    processed_documents = [
+        "\n".join(doc) if isinstance(doc, list) else doc
+        for doc in documents
+    ]
 
+    # Step 2: Create query-document pairs
+    pairs = [[query_text, doc] for doc in processed_documents if isinstance(doc, str) and doc.strip()]
 
-    print("Pairs:", pairs)
+    # Check if pairs are valid
+    if not pairs:
+        raise ValueError("No valid query-document pairs found for reranking.")
 
-    # Step 2: Predict relevance scores for each pair
+    # Step 3: Predict relevance scores for each pair
     scores = cross_encoder.predict(pairs, batch_size=16)
 
-    # Step 3: Sort documents by their scores in descending order
-    ranked_documents = sorted(zip(documents, scores), key=lambda x: x[1], reverse=True)
+    # Step 4: Sort documents by their scores in descending order
+    ranked_documents = sorted(zip(processed_documents, scores), key=lambda x: x[1], reverse=True)
 
     # Return only the documents, sorted by relevance
     return [doc for doc, _ in ranked_documents]
@@ -60,7 +66,7 @@ def query_chromadb(query_text: str, collection_name: str = "time_analysis", top_
     # Query the collection
     results = collection.query(
         query_texts=query_text, 
-        n_results=top_k, 
+        n_results=10, 
         include=['documents', 'embeddings'],
         query_embeddings=query_embedding
     )
@@ -73,6 +79,10 @@ def query_chromadb(query_text: str, collection_name: str = "time_analysis", top_
 
 # Function to send the augmented prompt to the local LLM
 def send_to_llm(prompt: str):
+
+    if isinstance(prompt, list):
+        prompt = json.dumps(prompt)
+
     try:
         result = subprocess.run(
             ["ollama", "run", "llama3.2", prompt],
@@ -117,9 +127,6 @@ def query_database(request: QueryRequest):
         - Use the context to answer the query as accurately as possible.
         - If the context does not contain enough information, respond with "I don't have enough information to answer this query."
         - Your response should be in clean markdown format.
-        - Suggest only short questions without compound sentences. Suggest a variety of questions that cover different aspects of the topic.
-        - Make sure they are complete questions, and that they are related to the original question.
-        - Output one question per line. Do not number the questions.
         """
 
     messages = [
