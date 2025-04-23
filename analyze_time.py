@@ -10,7 +10,9 @@ from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunct
 # Initialize ChromaDB client
 chroma_client = chromadb.PersistentClient(path="./chromadb")
 
-
+# Get today's and yesterday's dates
+today = datetime.date.today()
+yesterday = today - datetime.timedelta(days=1)
 
 # Function to split text into chunks
 def split_text_into_chunks(text, chunk_size=500, chunk_overlap=50):
@@ -38,9 +40,7 @@ def process_file(file_path):
 def find_files_in_downloads():
     download_dir = os.path.expanduser("~/Downloads")  # Path to the Downloads directory
 
-        # Get today's and yesterday's dates
-    today = datetime.date.today()
-    yesterday = today - datetime.timedelta(days=1)
+    global today, yesterday
 
     # Expected filename patterns
     filename_base_today = f"Toggl_Track_summary_report_{today}_{today}"
@@ -102,9 +102,7 @@ def split_text_into_tokens(chunks):
 
 # Function to send text and prompt to the local LLM
 def send_to_llm(today_text, yesterday_text, output_file="time_analyze.md"):
-        # Get today's and yesterday's dates
-    today = datetime.date.today()
-    yesterday = today - datetime.timedelta(days=1)
+    global today, yesterday
     
     # Define the prompt
     prompt = f"""[INST]
