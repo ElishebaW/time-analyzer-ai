@@ -11,6 +11,7 @@ from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunct
 chroma_client = chromadb.PersistentClient(path="./chromadb")
 
 
+
 # Function to split text into chunks
 def split_text_into_chunks(text, chunk_size=500, chunk_overlap=50):
     text_splitter = RecursiveCharacterTextSplitter(
@@ -37,7 +38,7 @@ def process_file(file_path):
 def find_files_in_downloads():
     download_dir = os.path.expanduser("~/Downloads")  # Path to the Downloads directory
 
-    # Get today's and yesterday's dates
+        # Get today's and yesterday's dates
     today = datetime.date.today()
     yesterday = today - datetime.timedelta(days=1)
 
@@ -79,7 +80,6 @@ def add_to_chromadb(text, collection_name="time_analysis"):
     token_split_texts = split_text_into_tokens(chunks)
 
     embedding_function = SentenceTransformerEmbeddingFunction()
-    print(embedding_function([token_split_texts[10]]))
 
     # Create or get a ChromaDB collection
     collection = chroma_client.get_or_create_collection(name=collection_name, embedding_function=embedding_function)
@@ -102,26 +102,31 @@ def split_text_into_tokens(chunks):
 
 # Function to send text and prompt to the local LLM
 def send_to_llm(today_text, yesterday_text, output_file="time_analyze.md"):
+        # Get today's and yesterday's dates
+    today = datetime.date.today()
+    yesterday = today - datetime.timedelta(days=1)
+    
     # Define the prompt
-    prompt = f"""
-You are my productivity coach. You will receive structured time tracking data for TODAY and YESTERDAY as JSON.
+    prompt = f"""[INST]
+            You are my productivity coach. You will receive structured time tracking data for {today} and {yesterday} as JSON.
 
-Your task is to:
-- Compare the time and projects between TODAY and YESTERDAY.
-- ONLY use the entries listed under each specific date — never infer or carry over tasks between days.
-- Do not assume any project happened on both days unless it appears in both TODAY and YESTERDAY sections.
-- Assign a productivity score for TODAY (0–100), based on time usage, task quality, and inclusion of rest or walking breaks.
-- Suggest 2–3 improvements to my time usage. Breaks and walking are considered positive.
-- Your output should be in clean markdown.
-- Make it specific to the data provided, without any assumptions or inferences not generic.
-- Important: Do NOT hallucinate or infer data. ONLY use the fields explicitly provided under each date. If you're not sure, say "I'm not sure how you can improve the time.".
+            Your task is to:
+            - Compare the time and projects between {today} and {yesterday}.
+            - ONLY use the entries listed under each specific date — never infer or carry over tasks between days.
+            - Do not assume any project happened on both days unless it appears in both TODAY and YESTERDAY sections.
+            - Assign a productivity score for {today}(0–100), based on time usage, task quality, and inclusion of rest or walking breaks.
+            - Suggest 2–3 improvements to my time usage. Breaks and walking are considered positive.
+            - Your output should be in clean markdown.
+            - Make it specific to the data provided, without any assumptions or inferences not generic.
+            - Important: Do NOT hallucinate or infer data. ONLY use the fields explicitly provided under each date. If you're not sure, say "I'm not sure how you can improve the time.".
 
-TODAY:
-{today_text}
+            TODAY - {today}:
+            {today_text}
 
-YESTERDAY:
-{yesterday_text}
-"""
+            YESTERDAY - {yesterday}:
+            {yesterday_text}
+            [/INST]
+        """
 
     # Write the date to the output file
     today = datetime.date.today()
@@ -131,7 +136,7 @@ YESTERDAY:
     # Send the prompt and text to the local LLM using `ollama`
     try:
         result = subprocess.run(
-            ["ollama", "run", "llama3.2", prompt],
+            ["ollama", "run", "codellama", prompt],
             capture_output=True,
             text=True
         )

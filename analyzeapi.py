@@ -2,8 +2,8 @@ import chromadb
 import subprocess
 import json
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List
 from chromadb.utils import embedding_functions
 from sentence_transformers import CrossEncoder
 from transformers import pipeline
@@ -98,6 +98,14 @@ class QueryRequest(BaseModel):
     query: str
     top_k: int = 5
 
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # Front-end origin (Next.js dev server)
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all HTTP methods (GET, POST, etc.)
+    allow_headers=["*"],  # Allow all headers
+)
 # API Endpoints
 
 @app.get("/")
