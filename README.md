@@ -5,7 +5,7 @@ A local, privacy-first app to query and analyze your time-tracking data using a 
 ## 🔑 Key Features
 
 - **Natural Language Queries**: Ask your data questions like “How many hours on meetings last week?”
-- **Local LLM**: Runs LLaMA 3 via [Ollama](https://ollama.com), no API keys or cloud calls.
+- **Local LLM**: Runs CodeLlama via [Ollama](https://ollama.com), no API keys or cloud calls.
 - **Vector Search**: ChromaDB for embeddings & top-K similarity retrieval.
 - **Modern UI**: Next.js + Tailwind CSS frontend for a responsive, accessible interface.
 - **FastAPI Backend**: Lightning-fast API endpoints with uvicorn and CORS support.
