@@ -1,6 +1,7 @@
 # 🚀 Time Analyzer AI
-
-A local, privacy-first app to query and analyze your time-tracking data using a local LLaMA 3 model.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+![Python Version](https://img.shields.io/badge/python-3.9%2B-blue)
+![npm Version](https://img.shields.io/badge/npm-8%2B-blue)
 
 ## 🔑 Key Features
 
@@ -67,4 +68,6 @@ curl -X POST http://localhost:8000/query \
 
 ## 📄 License
 
-Custom License
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
