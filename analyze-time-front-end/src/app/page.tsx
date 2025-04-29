@@ -3,26 +3,16 @@ import Link from "next/link";
 
 export default function Home() {
   return (
-    <div style={{ padding: "2rem", fontFamily: "Arial, sans-serif" }}>
-      <h1>Welcome to the Time Analyzer AI App</h1>
-      <p>
-        Go to the query page to ask questions of your time!
-      </p>
-      <Link href="/query">
-        <button
-          style={{
-            padding: "0.75rem 1.5rem",
-            fontSize: "1rem",
-            backgroundColor: "#0070f3",
-            color: "#fff",
-            border: "none",
-            borderRadius: "5px",
-            cursor: "pointer",
-          }}
-        >
-          Go to Query Page
-        </button>
-      </Link>
+    <div className="container mx-auto px-8 py-16 font-sans text-gray-900 dark:text-gray-100">
+      <h1 className="text-5xl font-bold mb-4 text-center">Time Analyzer AI</h1>
+      <p className="text-lg mb-8 text-center">Analyze and query your time-tracking data effortlessly.</p>
+      <div className="flex justify-center">
+        <Link href="/query" className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-medium transition">
+
+            Go to Query Page
+       
+        </Link>
+      </div>
     </div>
   );
 }
