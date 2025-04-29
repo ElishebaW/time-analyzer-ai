@@ -4,17 +4,23 @@ import json
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from chromadb.utils import embedding_functions
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_chroma import Chroma
+from langchain_ollama import ChatOllama
 from sentence_transformers import CrossEncoder
 from transformers import pipeline
+
 
 # Initialize FastAPI app
 app = FastAPI()
 
-# Initialize ChromaDB client
-chroma_client = chromadb.PersistentClient(path="./chromadb")
+CHROMA_DB_PATH = "./chromadb"
 
-embedding_function = embedding_functions.SentenceTransformerEmbeddingFunction()
+EMBEDDING_MODEL = "sentence-transformers/all-mpnet-base-v2"
+embedding_function = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
+
+# Initialize ChromaDB client
+chroma_client = Chroma(persist_directory=CHROMA_DB_PATH, embedding_function=embedding_function)
 
 # Initialize the Cross-Encoder model
 cross_encoder = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
@@ -52,27 +58,16 @@ def rerank_documents_with_cross_encoder(query_text, documents):
     return [doc for doc, _ in ranked_documents]
 
 # Function to query ChromaDB
-def query_chromadb(query_text: str, collection_name: str = "time_analysis", top_k: int = 5):
+def query_chromadb(query_text: str, top_k: int = 5):
 
-       # Step 1: Expand the query
+    # Step 1: Expand the query
     expanded_query = expand_query(query_text)
 
-    # Generate embedding for the query
-    query_embedding = embedding_function([expanded_query])
-
-    # Get the collection
-    collection = chroma_client.get_or_create_collection(name=collection_name)
-
-    # Query the collection
-    results = collection.query(
-        query_texts=query_text, 
-        n_results=10, 
-        include=['documents', 'embeddings'],
-        query_embeddings=query_embedding
-    )
-
-    # Extract relevant documents
-    documents = results.get("documents", [])
+    # Retrieve similar documents via Langchain-Chroma
+    # Chroma vector store has similarity_search
+    docs = chroma_client.similarity_search(expanded_query, k=top_k)
+    # Extract text content
+    documents = [getattr(doc, 'page_content', str(doc)) for doc in docs]
 
     # Step 4: Rerank the documents
     return rerank_documents_with_cross_encoder(query_text, documents)
@@ -84,12 +79,12 @@ def send_to_llm(prompt: str):
         prompt = json.dumps(prompt)
 
     try:
-        result = subprocess.run(
-            ["ollama", "run", "llama3.2", prompt],
-            capture_output=True,
-            text=True
+        llm = ChatOllama(
+            model="codellama",
+            temperature=0,
         )
-        return result.stdout.strip()
+        response = llm.invoke(prompt)
+        return response.content
     except FileNotFoundError:
         raise HTTPException(status_code=500, detail="ollama is not installed or not in PATH.")
 
