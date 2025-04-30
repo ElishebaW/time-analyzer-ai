@@ -8,7 +8,6 @@ from langchain_chroma import Chroma
 from langchain_ollama import ChatOllama
 from langchain_core.documents import Document
 
-
 # Initialize constants
 CHROMA_DB_PATH = "./chromadb"
 EMBEDDING_MODEL = "sentence-transformers/all-mpnet-base-v2"
@@ -120,6 +119,7 @@ def send_to_llm(today_text, yesterday_text, output_file="time_analyze.md"):
             - Your output should be in clean markdown.
             - Make it specific to the data provided, without any generic assumptions or inferences not generic.
             - If you're not sure, say "I'm not sure how you can improve the time.".
+            - 4 hours a day is a good base line for productivity, 5-6 hours is considered a high performing days and 2-3 hours is ok if there are meetings and other distractions 
 
             TODAY - {today}:
             {today_text}
