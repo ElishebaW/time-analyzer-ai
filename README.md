@@ -44,7 +44,7 @@
 
 4. **Use the App**
    - To start tracking your time you will need to create an account on Toggl and start tracking your time.
-   - At the end of your day, run analyze_time.py to add the embeddings to the ChromaDB and  get a summary of how you can be productive the next day in time_analyze.md.
+   - At the end of your day download a report from Toggl in CSV or ODF format to your Downloads folder, run analyze_time.py to add the embeddings to the ChromaDB and  get a summary of how you can be productive the next day in time_analyze.md.
    - When you are ready to ask questions on your data, open http://localhost:3000 in your browser.
    - Navigate to “Query” and enter your natural language question.
 
