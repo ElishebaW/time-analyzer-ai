@@ -17,6 +17,7 @@
 - Node.js 16+
 - npm or yarn
 - [Ollama](https://ollama.com/download)
+- [Toggl Tracker](https://toggl.com/)
 - (Optional) Docker if you prefer containerized setup
 
 ## ⚙️ Setup & Run
@@ -29,22 +30,22 @@
 
 2. **Backend**
    ```bash
-   python -m venv venv            # create venv
-   source venv/bin/activate       # activate
-   pip install -r requirements.txt
+   pip install langchain-community langchain-text-splitters langchain-huggingface langchain-chroma langchain-ollama pydantic json langchain-core sentence-transformers transformers
    # ensure Ollama & ChromaDB are running locally
-   uvicorn analyzeapi:app --reload --host 0.0.0.0 --port 8000
+   uvicorn analyzeapi:app --reload --host 0.0.0.0 --port 8000 or fastapi dev analyzeapi.py
    ```
 
 3. **Frontend**
    ```bash
    cd analyze-time-front-end
    npm install
-   npm run dev                   # starts Next.js on http://localhost:3000
+   npm run dev                   
    ```
 
 4. **Use the App**
-   - Open http://localhost:3000 in your browser.
+   - To start tracking your time you will need to create an account on Toggl and start tracking your time.
+   - At the end of your day, run analyze_time.py to add the embeddings to the ChromaDB and  get a summary of how you can be productive the next day in time_analyze.md.
+   - When you are ready to ask questions on your data, open http://localhost:3000 in your browser.
    - Navigate to “Query” and enter your natural language question.
 
 ## 📋 API Example
@@ -60,11 +61,6 @@ curl -X POST http://localhost:8000/query \
   "response": "You spent 12.5 hours on design tasks last month..."
 }
 ```
-
-## 🧪 Testing
-
-- **Backend**: `pytest` (ensure venv is active)
-- **Frontend**: add Jest/React Testing Library as needed
 
 ## 📄 License
 
