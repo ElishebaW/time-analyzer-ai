@@ -119,6 +119,7 @@ def send_to_llm(today_text, yesterday_text, output_file="time_analyze.md"):
             - Your output should be in clean markdown.
             - Make it specific to the data provided, without any generic assumptions or inferences not generic.
             - If you're not sure, say "I'm not sure how you can improve the time.".
+            - For Pdf file .pdf type only look at the entries under TIME ENTRY DURATION
             - 4 hours a day is a good base line for productivity, 5-6 hours is considered a high performing days and 2-3 hours is ok if there are meetings and other distractions 
 
             TODAY - {today}:
@@ -136,7 +137,7 @@ def send_to_llm(today_text, yesterday_text, output_file="time_analyze.md"):
     # Send the prompt and text to the local LLM using `ollama`
     try:
         llm = ChatOllama(
-            model="codellama",
+            model="llama3.2",
             temperature=0,
         )
 
