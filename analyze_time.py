@@ -137,7 +137,7 @@ def send_to_llm(today_text, yesterday_text, output_file="time_analyze.md"):
     # Send the prompt and text to the local LLM using `ollama`
     try:
         llm = ChatOllama(
-            model="llama3.2",
+            model="codellama",
             temperature=0,
         )
 
