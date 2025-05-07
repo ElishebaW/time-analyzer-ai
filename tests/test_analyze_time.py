@@ -1,7 +1,5 @@
-import os
-import pytest
 from unittest.mock import MagicMock, patch
-from analyze_time import (  # Changed from relative to absolute import
+from analyze_time import (
     find_files_in_downloads,
     process_file,
     split_documents,
