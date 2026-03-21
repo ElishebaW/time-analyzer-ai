@@ -8,7 +8,6 @@ from langchain_ollama import ChatOllama
 from sentence_transformers import CrossEncoder
 from transformers import pipeline
 
-
 # Initialize FastAPI app
 app = FastAPI()
 
@@ -18,15 +17,21 @@ EMBEDDING_MODEL = "sentence-transformers/all-mpnet-base-v2"
 embedding_function = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
 
 # Initialize ChromaDB client
-chroma_client = Chroma(persist_directory=CHROMA_DB_PATH, embedding_function=embedding_function)
+chroma_client = Chroma(
+    persist_directory=CHROMA_DB_PATH, embedding_function=embedding_function
+)
 
 # Initialize the Cross-Encoder model
-cross_encoder = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
+cross_encoder = CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
+
 
 def expand_query(query):
     generator = pipeline("text2text-generation", model="t5-small")
-    expanded_query = generator(f"Expand this query: {query}", max_length=50, num_return_sequences=1)
+    expanded_query = generator(
+        f"Expand this query: {query}", max_length=50, num_return_sequences=1
+    )
     return expanded_query[0]["generated_text"]
+
 
 def rerank_documents_with_cross_encoder(query_text, documents):
     """
@@ -35,12 +40,15 @@ def rerank_documents_with_cross_encoder(query_text, documents):
 
     # Step 1: Ensure each document is a single string
     processed_documents = [
-        "\n".join(doc) if isinstance(doc, list) else doc
-        for doc in documents
+        "\n".join(doc) if isinstance(doc, list) else doc for doc in documents
     ]
 
     # Step 2: Create query-document pairs
-    pairs = [[query_text, doc] for doc in processed_documents if isinstance(doc, str) and doc.strip()]
+    pairs = [
+        [query_text, doc]
+        for doc in processed_documents
+        if isinstance(doc, str) and doc.strip()
+    ]
 
     # Check if pairs are valid
     if not pairs:
@@ -50,10 +58,13 @@ def rerank_documents_with_cross_encoder(query_text, documents):
     scores = cross_encoder.predict(pairs, batch_size=16)
 
     # Step 4: Sort documents by their scores in descending order
-    ranked_documents = sorted(zip(processed_documents, scores), key=lambda x: x[1], reverse=True)
+    ranked_documents = sorted(
+        zip(processed_documents, scores), key=lambda x: x[1], reverse=True
+    )
 
     # Return only the documents, sorted by relevance
     return [doc for doc, _ in ranked_documents]
+
 
 # Function to query ChromaDB
 def query_chromadb(query_text: str, top_k: int = 5):
@@ -65,10 +76,11 @@ def query_chromadb(query_text: str, top_k: int = 5):
     # Chroma vector store has similarity_search
     docs = chroma_client.similarity_search(expanded_query, k=top_k)
     # Extract text content
-    documents = [getattr(doc, 'page_content', str(doc)) for doc in docs]
+    documents = [getattr(doc, "page_content", str(doc)) for doc in docs]
 
     # Step 4: Rerank the documents
     return rerank_documents_with_cross_encoder(query_text, documents)
+
 
 # Function to send the augmented prompt to the local LLM
 def send_to_llm(prompt: str):
@@ -84,12 +96,16 @@ def send_to_llm(prompt: str):
         response = llm.invoke(prompt)
         return response.content
     except FileNotFoundError:
-        raise HTTPException(status_code=500, detail="ollama is not installed or not in PATH.")
+        raise HTTPException(
+            status_code=500, detail="ollama is not installed or not in PATH."
+        )
+
 
 # API Models
 class QueryRequest(BaseModel):
     query: str
     top_k: int = 5
+
 
 # Add CORS middleware
 app.add_middleware(
@@ -101,9 +117,11 @@ app.add_middleware(
 )
 # API Endpoints
 
+
 @app.get("/")
 def read_root():
     return {"message": "Welcome to the RAG API powered by ChromaDB and FastAPI!"}
+
 
 @app.post("/query")
 def query_database(request: QueryRequest):
@@ -131,12 +149,9 @@ def query_database(request: QueryRequest):
         """
 
     messages = [
-        {
-            "role": "system",
-            "content": prompt
-        },
-        {"role": "user", "content": request.query}
-    ] 
+        {"role": "system", "content": prompt},
+        {"role": "user", "content": request.query},
+    ]
 
     # Step 3: Send the prompt to the local LLM
     response = send_to_llm(messages)

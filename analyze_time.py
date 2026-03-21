@@ -16,6 +16,7 @@ EMBEDDING_MODEL = "sentence-transformers/all-mpnet-base-v2"
 today = datetime.date.today()
 yesterday = today - datetime.timedelta(days=1)
 
+
 # Function to find today's and yesterday's files in the Downloads directory
 def find_files_in_downloads():
     download_dir = os.path.expanduser("~/Downloads")  # Path to the Downloads directory
@@ -41,11 +42,16 @@ def find_files_in_downloads():
             break
 
     if not today_file:
-        raise FileNotFoundError(f"No Toggl Track summary report found for today ({today}) in Downloads.")
+        raise FileNotFoundError(
+            f"No Toggl Track summary report found for today ({today}) in Downloads."
+        )
     if not yesterday_file:
-        raise FileNotFoundError(f"No Toggl Track summary report found for yesterday ({yesterday}) in Downloads.")
+        raise FileNotFoundError(
+            f"No Toggl Track summary report found for yesterday ({yesterday}) in Downloads."
+        )
 
     return today_file, yesterday_file
+
 
 # Function to process files using LangChain document loaders
 def process_file(file_path):
@@ -54,58 +60,61 @@ def process_file(file_path):
     elif file_path.endswith(".csv"):
         loader = CSVLoader(file_path)
     else:
-        raise ValueError("Unsupported file format. Only PDF and CSV files are supported.")
+        raise ValueError(
+            "Unsupported file format. Only PDF and CSV files are supported."
+        )
 
     # Load documents
     raw_documents = loader.load()
 
     # Convert raw documents to LangChain Document objects with metadata
     documents = [
-        Document(
-            page_content=doc.page_content,
-            metadata={"source": file_path}
-        )
+        Document(page_content=doc.page_content, metadata={"source": file_path})
         for doc in raw_documents
     ]
     return documents
 
+
 # Function to split documents into chunks
 def split_documents(documents):
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=500,
-        chunk_overlap=50,
-        separators=["\n\n", "\n", " ", ""]
+        chunk_size=500, chunk_overlap=50, separators=["\n\n", "\n", " ", ""]
     )
     split_docs = text_splitter.split_documents(documents)
 
     # Ensure split documents are properly formatted
     formatted_docs = [
-        Document(
-            page_content=doc.page_content,
-            metadata=doc.metadata
-        )
+        Document(page_content=doc.page_content, metadata=doc.metadata)
         for doc in split_docs
     ]
     return formatted_docs
+
 
 # Function to add documents to ChromaDB
 def add_to_chromadb(documents, collection_name="time_analysis"):
     # Initialize embeddings and Chroma vector store
     embeddings = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
-    vectorstore = Chroma(persist_directory=CHROMA_DB_PATH, embedding_function=embeddings)
+    vectorstore = Chroma(
+        persist_directory=CHROMA_DB_PATH, embedding_function=embeddings
+    )
 
     # Debugging: Print the structure of the documents
-    print(f"Adding documents: {documents[:2]}")  # Print the first two documents for debugging
+    print(
+        f"Adding documents: {documents[:2]}"
+    )  # Print the first two documents for debugging
 
     # Add documents to the vector store
     vectorstore.add_documents(documents)
 
-    print(f"Added {len(documents)} documents to the ChromaDB collection '{collection_name}'.")
+    print(
+        f"Added {len(documents)} documents to the ChromaDB collection '{collection_name}'."
+    )
+
 
 # Function to send text and prompt to the local LLM
 def send_to_llm(today_text, yesterday_text, output_file="time_analyze.md"):
     global today, yesterday
-    
+
     # Define the prompt
     prompt = f"""[INST]
             You are my productivity coach. You will receive structured time tracking data for {today} and {yesterday} as JSON.
@@ -147,7 +156,10 @@ def send_to_llm(today_text, yesterday_text, output_file="time_analyze.md"):
             f.write(response.content)
         print(f"Analysis saved to {output_file}")
     except FileNotFoundError:
-        raise EnvironmentError("ollama is not installed or not in PATH. Please ensure it is installed.")
+        raise EnvironmentError(
+            "ollama is not installed or not in PATH. Please ensure it is installed."
+        )
+
 
 # Main function
 if __name__ == "__main__":
@@ -174,11 +186,10 @@ if __name__ == "__main__":
     print("Adding documents to ChromaDB...")
     add_to_chromadb(split_docs, collection_name="time_analysis")
 
-
     # Send the extracted text and prompt to the local LLM
     send_to_llm(
         today_text="\n".join([doc.page_content for doc in today_documents]),
-        yesterday_text="\n".join([doc.page_content for doc in yesterday_documents])
+        yesterday_text="\n".join([doc.page_content for doc in yesterday_documents]),
     )
 
     print("Analysis complete.")
