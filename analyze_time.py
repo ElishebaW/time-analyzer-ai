@@ -1,12 +1,13 @@
-import os
 import datetime
+import os
+
+from langchain_chroma import Chroma
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.document_loaders.csv_loader import CSVLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_chroma import Chroma
-from langchain_ollama import ChatOllama
 from langchain_core.documents import Document
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_ollama import ChatOllama
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 # Initialize constants
 CHROMA_DB_PATH = "./chromadb"
@@ -47,7 +48,8 @@ def find_files_in_downloads():
         )
     if not yesterday_file:
         raise FileNotFoundError(
-            f"No Toggl Track summary report found for yesterday ({yesterday}) in Downloads."
+            f"No Toggl Track summary report found for yesterday "
+            f"({yesterday}) in Downloads."
         )
 
     return today_file, yesterday_file
@@ -98,22 +100,18 @@ def add_to_chromadb(documents, collection_name="time_analysis"):
         persist_directory=CHROMA_DB_PATH, embedding_function=embeddings
     )
 
-    # Debugging: Print the structure of the documents
-    print(
-        f"Adding documents: {documents[:2]}"
-    )  # Print the first two documents for debugging
-
     # Add documents to the vector store
     vectorstore.add_documents(documents)
 
     print(
-        f"Added {len(documents)} documents to the ChromaDB collection '{collection_name}'."
+        f"Added {len(documents)} documents to the ChromaDB "
+        f"collection '{collection_name}'."
     )
 
 
 # Function to send text and prompt to the local LLM
 def send_to_llm(today_text, yesterday_text, output_file="time_analyze.md"):
-    global today, yesterday
+    today, yesterday
 
     # Define the prompt
     prompt = f"""[INST]
@@ -156,7 +154,7 @@ def send_to_llm(today_text, yesterday_text, output_file="time_analyze.md"):
             f.write(response.content)
         print(f"Analysis saved to {output_file}")
     except FileNotFoundError:
-        raise EnvironmentError(
+        raise OSError(
             "ollama is not installed or not in PATH. Please ensure it is installed."
         )
 
