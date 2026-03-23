@@ -1,10 +1,11 @@
 from unittest.mock import MagicMock, patch
+
 from analyze_time import (
+    add_to_chromadb,
     find_files_in_downloads,
     process_file,
-    split_documents,
-    add_to_chromadb,
     send_to_llm,
+    split_documents,
 )
 
 
@@ -49,20 +50,20 @@ def test_split_documents():
 # Test add_to_chromadb
 def test_add_to_chromadb():
     mock_docs = [MagicMock(page_content="test content")]
-    with patch("analyze_time.HuggingFaceEmbeddings") as mock_embeddings, patch(
-        "analyze_time.Chroma"
-    ) as mock_chroma:
-
+    with (
+        patch("analyze_time.HuggingFaceEmbeddings"),
+        patch("analyze_time.Chroma") as mock_chroma,
+    ):
         add_to_chromadb(mock_docs)
         mock_chroma.return_value.add_documents.assert_called_once_with(mock_docs)
 
 
 # Test send_to_llm
 def test_send_to_llm():
-    with patch("analyze_time.ChatOllama") as mock_llm, patch(
-        "builtins.open", create=True
-    ) as mock_open:
-
+    with (
+        patch("analyze_time.ChatOllama") as mock_llm,
+        patch("builtins.open", create=True) as mock_open,
+    ):
         mock_llm.return_value.invoke.return_value = MagicMock(content="test analysis")
         mock_file = MagicMock()
         mock_open.return_value.__enter__.return_value = mock_file

@@ -1,12 +1,14 @@
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
 from fastapi.testclient import TestClient
+
 from analyze_api import (
     app,
-    query_chromadb,
-    send_to_llm,
     expand_query,
+    query_chromadb,
     rerank_documents_with_cross_encoder,
+    send_to_llm,
 )
 
 # Create a TestClient instance
@@ -24,10 +26,10 @@ def test_read_root():
 
 # Test the query endpoint
 def test_query_database():
-    with patch("analyze_api.query_chromadb") as mock_query, patch(
-        "analyze_api.send_to_llm"
-    ) as mock_send:
-
+    with (
+        patch("analyze_api.query_chromadb") as mock_query,
+        patch("analyze_api.send_to_llm") as mock_send,
+    ):
         mock_query.return_value = ["test document 1", "test document 2"]
         mock_send.return_value = "test response"
 
@@ -41,10 +43,10 @@ def test_query_database():
 
 # Test query_chromadb function
 def test_query_chromadb():
-    with patch("analyze_api.expand_query") as mock_expand, patch(
-        "analyze_api.rerank_documents_with_cross_encoder"
-    ) as mock_rerank:
-
+    with (
+        patch("analyze_api.expand_query") as mock_expand,
+        patch("analyze_api.rerank_documents_with_cross_encoder") as mock_rerank,
+    ):
         mock_expand.return_value = "expanded query"
         mock_rerank.return_value = ["test document"]
 
